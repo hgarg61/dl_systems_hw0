@@ -20,7 +20,7 @@ def add(x, y):
         Sum of x + y
     """
     ### BEGIN YOUR CODE
-    pass
+    return x + y
     ### END YOUR CODE
 
 
@@ -48,7 +48,21 @@ def parse_mnist(image_filename, label_filename):
                 for MNIST will contain the values 0-9.
     """
     ### BEGIN YOUR CODE
-    pass
+    
+    # read mnist data using struct in float32 format
+    with gzip.open(image_filename, 'rb') as f:
+        magic, num, rows, cols = struct.unpack(">IIII", f.read(16))
+        X = np.frombuffer(f.read(), dtype=np.uint8).astype(np.float32)
+        X = X.reshape(num, rows*cols)
+        X /= 255.0
+
+    # read mnist label using struct in uint8 format
+    with gzip.open(label_filename, 'rb') as f:
+        magic, num = struct.unpack(">II", f.read(8))
+        y = np.frombuffer(f.read(), dtype=np.uint8)
+
+    
+    return X, y
     ### END YOUR CODE
 
 
@@ -68,7 +82,8 @@ def softmax_loss(Z, y):
         Average softmax loss over the sample.
     """
     ### BEGIN YOUR CODE
-    pass
+    Zi = Z[np.arange(Z.shape[0]), y]
+    return -np.mean(Zi - np.log(np.sum(np.exp(Z), axis=1)))
     ### END YOUR CODE
 
 
@@ -91,7 +106,29 @@ def softmax_regression_epoch(X, y, theta, lr = 0.1, batch=100):
         None
     """
     ### BEGIN YOUR CODE
-    pass
+    
+    # get the number of examples
+    num_examples = X.shape[0]
+
+    # iterate through batches
+    for i in range(0, num_examples, batch):
+        # get the batch
+        X_batch = X[i:i+batch]
+        y_batch = y[i:i+batch]
+
+        # get the softmax
+        Z = X_batch @ theta
+        Z -= np.max(Z, axis=1, keepdims=True)
+        Z = np.exp(Z)
+        Z /= np.sum(Z, axis=1, keepdims=True)
+
+        # get the gradient
+        Z[np.arange(Z.shape[0]), y_batch] -= 1
+        grad = X_batch.T @ Z
+
+        # update theta
+        theta -= lr * grad / batch
+
     ### END YOUR CODE
 
 
@@ -118,7 +155,39 @@ def nn_epoch(X, y, W1, W2, lr = 0.1, batch=100):
         None
     """
     ### BEGIN YOUR CODE
-    pass
+    
+    num_examples = X.shape[0]
+
+    for i in range(0, num_examples, batch):
+
+        X_batch = X[i:i+batch] # 784 x 100
+        y_batch = y[i:i+batch] # 100
+
+        # get the logits
+        Z_relu = np.maximum(X_batch @ W1, 0)
+        Z_out = Z_relu @ W2
+
+        # get the softmax
+        Z_out -= np.max(Z_out, axis=1, keepdims=True)
+        Z_out = np.exp(Z_out)
+
+        Z_out /= np.sum(Z_out, axis=1, keepdims=True)
+
+        # get the gradient
+        Z_out[np.arange(Z_out.shape[0]), y_batch] -= 1
+        grad_out = Z_relu.T @ Z_out / batch
+
+        grad_relu = Z_out @ W2.T
+        grad_relu[Z_relu <= 0] = 0
+        grad_relu = X_batch.T @ grad_relu / batch
+
+        # update W1 and W2
+        W1 -= lr * grad_relu
+        W2 -= lr * grad_out
+        
+
+
+
     ### END YOUR CODE
 
 
